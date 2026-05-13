@@ -10,6 +10,8 @@ class AgoraService {
   bool _isJoined = false;
   String? _currentChannel;
   int? _remoteUid;
+  bool _isMuted = false;
+  bool _isSpeakerOn = true;
 
   Future<void> initialize() async {
     final appId = dotenv.env['AGORA_APP_ID'];
@@ -17,25 +19,25 @@ class AgoraService {
       throw Exception('AGORA_APP_ID not found in .env file');
     }
 
-    _engine = await RtcEngine.create(appId);
+    _engine = await RtcEngine.createWithContext(RtcEngineContext(appId));
     await _engine?.enableAudio();
     await _engine?.setChannelProfile(ChannelProfileType.channelProfileCommunication);
     
     _engine?.setEventHandler(
       RtcEngineEventHandler(
-        onJoinChannelSuccess: (connection, elapsed) {
+        onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
           print("✅ Joined channel: ${connection.channelId}");
           _isJoined = true;
         },
-        onUserJoined: (connection, uid, elapsed) {
-          print("👤 User joined: $uid");
-          _remoteUid = uid;
+        onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
+          print("👤 User joined: $remoteUid");
+          _remoteUid = remoteUid;
         },
-        onUserOffline: (connection, uid, reason) {
-          print("👋 User left: $uid");
+        onUserOffline: (RtcConnection connection, int remoteUid, UserOfflineReasonType reason) {
+          print("👋 User left: $remoteUid");
           _remoteUid = null;
         },
-        onError: (err, msg) {
+        onError: (int err, String msg) {
           print("❌ Error: $err - $msg");
         },
       ),
@@ -45,7 +47,12 @@ class AgoraService {
   Future<void> joinChannel(String channelName) async {
     if (_engine == null) await initialize();
     _currentChannel = channelName;
-    await _engine?.joinChannel(token: '', channelId: channelName, uid: 0);
+    await _engine?.joinChannel(
+      token: '',
+      channelId: channelName,
+      uid: 0,
+      options: ChannelMediaOptions(),
+    );
   }
 
   Future<void> leaveChannel() async {
@@ -55,17 +62,20 @@ class AgoraService {
     _currentChannel = null;
   }
 
-  void muteMicrophone(bool muted) {
-    _engine?.muteLocalAudioStream(muted);
+  void toggleMute() {
+    _isMuted = !_isMuted;
+    _engine?.muteLocalAudioStream(_isMuted);
   }
 
-  void enableSpeakerphone(bool enabled) {
-    _engine?.setEnableSpeakerphone(enabled);
+  void toggleSpeaker() {
+    _isSpeakerOn = !_isSpeakerOn;
+    _engine?.setEnableSpeakerphone(_isSpeakerOn);
   }
 
+  bool get isMuted => _isMuted;
+  bool get isSpeakerOn => _isSpeakerOn;
   bool get isJoined => _isJoined;
   int? get remoteUid => _remoteUid;
-  String? get currentChannel => _currentChannel;
 
   void dispose() {
     _engine?.leaveChannel();

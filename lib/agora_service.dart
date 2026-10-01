@@ -7,11 +7,10 @@ class AgoraService {
   AgoraService._internal();
 
   RtcEngine? _engine;
-  bool _isJoined = false;
-  String? _currentChannel;
-  int? _remoteUid;
+  bool _isInCall = false;
   bool _isMuted = false;
   bool _isSpeakerOn = true;
+  String? _currentChannel;
 
   Future<void> initialize() async {
     final appId = dotenv.env['AGORA_APP_ID'];
@@ -27,38 +26,35 @@ class AgoraService {
       RtcEngineEventHandler(
         onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
           print("✅ Joined channel: ${connection.channelId}");
-          _isJoined = true;
+          _isInCall = true;
         },
         onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
           print("👤 User joined: $remoteUid");
-          _remoteUid = remoteUid;
         },
         onUserOffline: (RtcConnection connection, int remoteUid, UserOfflineReasonType reason) {
           print("👋 User left: $remoteUid");
-          _remoteUid = null;
         },
         onError: (int err, String msg) {
-          print("❌ Error: $err - $msg");
+          print("❌ Agora Error: $err - $msg");
         },
       ),
     );
   }
 
-  Future<void> joinChannel(String channelName) async {
+  Future<void> startCall(String channelName) async {
     if (_engine == null) await initialize();
     _currentChannel = channelName;
     await _engine?.joinChannel(
       token: '',
       channelId: channelName,
       uid: 0,
-      options: ChannelMediaOptions(),
+      options: const ChannelMediaOptions(),
     );
   }
 
-  Future<void> leaveChannel() async {
+  Future<void> endCall() async {
     await _engine?.leaveChannel();
-    _isJoined = false;
-    _remoteUid = null;
+    _isInCall = false;
     _currentChannel = null;
   }
 
@@ -72,10 +68,9 @@ class AgoraService {
     _engine?.setEnableSpeakerphone(_isSpeakerOn);
   }
 
+  bool get isInCall => _isInCall;
   bool get isMuted => _isMuted;
   bool get isSpeakerOn => _isSpeakerOn;
-  bool get isJoined => _isJoined;
-  int? get remoteUid => _remoteUid;
 
   void dispose() {
     _engine?.leaveChannel();

@@ -16,6 +16,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   path_provider: ^2.0.15
   flutter_sound: ^9.30.0
+  agora_rtc_engine: ^6.5.3
 
 dev_dependencies:
   flutter_test:
